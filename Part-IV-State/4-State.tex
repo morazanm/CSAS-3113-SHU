@@ -1580,12 +1580,12 @@ in let p = proc (x) \textcolor{red}{set x = 4}
 \framesubtitle{Call by Reference}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> 
+\item<1->
 \begin{alltt}
 let \textcolor{red}{a = 3}
 	p = proc (x) set x = 4
-in begin 
-    (p a); 
+in begin
+    (p a);
     a
    end
 \end{alltt}
@@ -1972,7 +1972,7 @@ in begin
 \framesubtitle{Call by Reference}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> 
+\item<1->
 \begin{alltt}
 ;; apply-procedure : proc (listof expval) -> expval
 (define (apply-procedure f vals)
@@ -1980,7 +1980,7 @@ in begin
     (procedure (params body envv)
       (let [(saved-env (vector-ref envv 0))]
         (value-of body
-          (foldr (lambda (binding acc) 
+          (foldr (lambda (binding acc)
                    (extend-env (car binding)
                                (newref (cadr binding))
                                acc))
@@ -2019,7 +2019,7 @@ in begin
   (let [(proc (expval2proc (value-of rator env)))
         (args (map (lambda (rand) (value-of rand env)) rands))]
     (apply-procedure proc args)))
-    
+
 \textcolor{red}{apply-procedure must be called with a (listof ref)}
 \end{alltt}
 
@@ -2029,7 +2029,7 @@ in begin
   (let [(proc (expval2proc (value-of rator env)))
         (args (map (lambda (rand) (value-of-rand rand env)) rands))]
     (apply-procedure proc args)))
-    
+
 \textcolor{red}{value-of-rand returns a reference}
 \end{alltt}
 
@@ -2053,7 +2053,7 @@ in begin
 \framesubtitle{Call by Reference}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> 
+\item<1->
 \begin{alltt}
 (check-equal? (eval "let a = 3
                      in let p = proc (x) set x = 4
@@ -2100,6 +2100,8 @@ in begin
 
 \item<2-> Never needed \arrow{} never evaluated
 
+\item<3-> Is this useful?
+
 
 \end{itemize}
 \end{scriptsize}
@@ -2110,7 +2112,38 @@ in begin
 \framesubtitle{Lazy Evaluation: Call by Name}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> R
+\item<1-> 
+\begin{alltt}
+letrec compute-ints-from-n (n) = (compute-ints-from-n +(n, 1))
+in let f = proc (k) 42
+   in (f (compute-ints-from-n 100))
+\end{alltt}
+
+\item<1-> What should this program return?
+
+\item<2-> It should return 42, but does not. Why?
+
+\item<3-> Under lazy evaluation this program returns 42
+
+\item<4->
+\begin{alltt}
+#lang eopl
+(require rackunit "../eopl-extras.rkt")
+
+(define (ints-from n) (stream-cons n (ints-from (+ n 1))))
+(define natnums (ints-from 0))
+(define (nth-natnum n) (stream-ref natnums n))
+(define (first-n-natnums n)
+  (if (= n 0)
+      (list (nth-natnum 0))
+      (cons (nth-natnum n) (first-n-natnums (- n 1)))))
+
+(check-equal?  (first-n-natnums 10)
+               \quot{}(10 9 8 7 6 5 4 3 2 1 0))
+(check-equal?  (first-n-natnums 15)
+               \quot{}(15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0))
+\end{alltt}
+
 
 \end{itemize}
 \end{scriptsize}
@@ -2121,7 +2154,32 @@ in begin
 \framesubtitle{Lazy Evaluation: Call by Name}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> R
+\item<1->
+\begin{alltt}
+#lang eopl
+(require rackunit "../eopl-extras.rkt")
+
+;; natnum --> natnum
+;; Purpose: Return the kth Fibonacci number
+(define (fib k)
+  (if (< k 2)
+      1
+      (+ (fib (- k 1)) (fib (- k 2)))))
+(define (the-fibs n) (stream-cons (fib n) (the-fibs (+ n 1))))
+(define fibs (the-fibs 0))
+(define (nth-fib n) (stream-ref fibs n))
+
+(check-equal?  (nth-fib 5)  8)
+(check-equal?  (nth-fib 10) 89)
+\end{alltt}
+
+\item<2->
+\begin{alltt}
+(define the-doubles (stream-map (\(\lambda\) (n) (* 2 n)) natnums))
+
+(check-equal? (stream-ref the-doubles 10) 20)
+(check-equal? (stream-ref the-doubles 1287) 2574)
+\end{alltt}
 
 \end{itemize}
 \end{scriptsize}
@@ -2132,7 +2190,26 @@ in begin
 \framesubtitle{Lazy Evaluation: Call by Name}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> R
+\item<1-> An operand is not evaluated until needed
+
+\item<2-> A bound var is associated with unevaluated  expression (frozen)
+
+\item<3-> When the value of the bound var is needed, then the expression is evaluated (thawed)
+
+\item<4-> What does this require?
+
+\item<5-> The env that exists when the expr is frozen
+
+\item<6->
+\begin{alltt}
+(define-datatype thunk thunk?
+  (a-thunk
+    (exp1 expression?)
+    (env environment?)))
+\end{alltt}
+
+\item<6-> The expr in a thunk is evaluated when a proc needs the value of bound var
+
 
 \end{itemize}
 \end{scriptsize}
@@ -2143,7 +2220,25 @@ in begin
 \framesubtitle{Lazy Evaluation: Call by Name}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> R
+
+\item<1-> Language
+\begin{itemize}
+  \item[\arrow] let remains eager
+  \item[\arrow] lazy evaluation of arguments
+  \item[\arrow] effects
+\end{itemize}
+
+\item<2-> Values
+\begin{itemize}
+  \item[\arrow] expval = int + bool + proc
+  \item[\arrow] denval = ref(expval + thunk)
+\end{itemize}
+
+\item<3-> New allocations policy
+\begin{itemize}
+  \item[\arrow] var: pass its denotation (which is a reference; same as call-by-reference)
+  \item[\arrow] not var: pass a ref to a new location storing a thunk for the unevaluated arg
+\end{itemize}
 
 \end{itemize}
 \end{scriptsize}
@@ -2154,31 +2249,17 @@ in begin
 \framesubtitle{Lazy Evaluation: Call by Name}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> R
-
-\end{itemize}
-\end{scriptsize}
-\end{frame}
-
-
-
-\begin{frame}[fragile]
-\frametitle{Parameter Passing Variations}
-\framesubtitle{Lazy Evaluation: Call by Need}
-\begin{scriptsize}
-\begin{itemize}
-\item<1-> R
-
-\end{itemize}
-\end{scriptsize}
-\end{frame}
-
-\begin{frame}[fragile]
-\frametitle{Parameter Passing Variations}
-\framesubtitle{Lazy Evaluation: Call by Need}
-\begin{scriptsize}
-\begin{itemize}
-\item<1-> R
+\item<1-> 
+\begin{alltt}
+;; value-of-rand : expression environment -> Ref
+;; Purpose: if the expression is a var-exp, then return the reference.
+;; otherwise,return a thunk for the given expression.
+(define (value-of-rand exp env)
+  (cases expression exp
+    (var-exp (var) (apply-env env var))
+    (else
+     (newref (a-thunk exp env))))) \textcolor{red}{\(\leftarrow\) not a var-exp create thunk}
+\end{alltt}
 
 \end{itemize}
 \end{scriptsize}
@@ -2186,10 +2267,94 @@ in begin
 
 \begin{frame}[fragile]
 \frametitle{Parameter Passing Variations}
+\framesubtitle{Lazy Evaluation: Call by Name}
+\begin{scriptsize}
+\begin{itemize}
+\item<1-> How do you evaluate a var-expr?
+
+\item<2->
+$\frac{w \ = \ deref(\rho(v))}{(value\text{-}of \ (var\text{-}exp v) \ \rho) \ = \ \textrm{if (expval? w) then w else  (value-of-thunk w)}
+}$
+
+\item<3-> change to value-of
+\begin{alltt}
+(var-exp (var)
+  (let ((ref1 (apply-env env var)))
+    (let ((w (deref ref1)))
+      (if (expval? w)
+          w					
+		  (value-of-thunk w))))
+\end{alltt}
+
+\end{itemize}
+\end{scriptsize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Parameter Passing Variations}
+\framesubtitle{Lazy Evaluation: Call by Name}
+\begin{scriptsize}
+\begin{itemize}
+
+\item<1-> Evaluating a thunk
+\begin{alltt}
+;; value-of-thunk : thunk -> expval
+;; Purpose: Evaluate the given thunk
+(define (value-of-thunk th)
+  (cases thunk th
+    (a-thunk (exp1 saved-env)
+             (value-of exp1 saved-env))))
+\end{alltt}
+
+\end{itemize}
+\end{scriptsize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Parameter Passing Variations}
+\framesubtitle{Lazy Evaluation: Call by Name}
+\begin{scriptsize}
+\begin{itemize}
+\item<1-> Consider
+\begin{alltt}
+let g = let counter = 10
+            in proc (d) *(2, counter)
+in (proc (x) +(x, x) (g 0))
+\end{alltt}
+
+\item<2-> x is the thunk for (g 0)
+
+\item<3-> the first x forces the evaluation of the thunk \arrow{} 20
+
+\item<4-> the second x forces the evaluation of the thunk \arrow{} 20
+
+\item<4-> returns 40
+\end{itemize}
+\end{scriptsize}
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Parameter Passing Variations}
 \framesubtitle{Lazy Evaluation: Call by Need}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> R
+\item<1-> Evaluating the same thunk seems wasteful
+
+\item<2-> Solution: Evaluate it once and mutate it for its value
+
+\item<3-> Change in value-of
+\begin{alltt}
+(var-exp (var)
+  (let ((ref1 (apply-env env var)))
+    (let ((w (deref ref1)))
+      (if (expval? w)
+          w	
+          (let ((v1 (value-of-thunk w)))
+            (begin
+              (setref! ref1 v1)
+              v1))))))
+\end{alltt}
 
 \end{itemize}
 \end{scriptsize}
@@ -2200,7 +2365,18 @@ in begin
 \framesubtitle{Lazy Evaluation: Call by Need}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> R
+\item<1-> Change how var-exp are evaluated
+\begin{alltt}
+(var-exp (var)
+  (let ((ref1 (apply-env env var)))
+    (let ((w (deref ref1)))
+      (if (expval? w)
+          w	
+          (let ((v1 (value-of-thunk w)))
+            (begin
+              (setref! ref1 v1)
+              v1))))))
+\end{alltt}
 
 \end{itemize}
 \end{scriptsize}
@@ -2211,7 +2387,23 @@ in begin
 \framesubtitle{Lazy Evaluation: Call by Need}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> R
+\item<1-> 
+\begin{alltt}
+let g = let counter = 10
+        in proc (d) *(2, counter)
+in (proc (x) +(x, x) (g 0))
+\end{alltt}
+
+\item<2> x is the thunk for (g 0)
+
+\item<3-> the first x forces the evaluation of the thunk to 20 
+
+\item<3-> mutates x to 20
+
+\item<4-> the second x (simply) returns its value of 20
+
+\item<4-> returns 40
+
 
 \end{itemize}
 \end{scriptsize}
@@ -2222,7 +2414,39 @@ in begin
 \framesubtitle{Lazy Evaluation: Call by Need}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> R
+\item<1-> In the absence of side-effects, call-by-name and call-by-need always yield the same answer
+
+\item<2-> In the presence of side-effects, it is easy to distinguish them
+
+\item<3->
+\begin{alltt}
+let g = let count = 0
+        in proc (d)
+	         begin
+               set count = incr(count);
+               count
+	       end
+in (proc (x) +(x, x) (g 0) )
+\end{alltt}
+
+\item<4-> g returns the number of times it is called
+
+\item<4-> Thunk for (g 0) is passed as the argument to the function in the body of the let
+
+\item<5-> call-by-name
+
+\item<6-> the first reference to x: sets count to 1 \& returns 1 as the value of (g 0)
+
+\item<7-> the second reference to x: sets count to 2 \& returns 2 as the value of (g 0)
+
+\item<8-> +(1, 2) = 3
+
+\item<9-> call-by-need
+
+\item<10-> the first reference to x forces: sets count to 1, returns 1 as the value of (g 0), and stores 1 as the value of (g 0)
+\item<11-> second reference to x: returns the stored 1 
+
+\item<12>  +(1, 1) = 2
 
 \end{itemize}
 \end{scriptsize}
@@ -2230,16 +2454,65 @@ in begin
 
 \begin{frame}[fragile]
 \frametitle{Parameter Passing Variations}
-\framesubtitle{Lazy Evaluation: Call by Need}
+%\framesubtitle{Lazy Evaluation: Call by Need}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> R
+\item<1-> Lazy evaluation: in the absence of side-effects allows for a simple way to reason about programs
+
+\item<2-> The effect of a procedure call is modeled by:
+\begin{itemize}
+ \item[\arrow] Replacing the call with the body of the procedure
+ \item[\arrow] Every reference to a parameter in the body is replaced by the corresponding operand
+ \item[\arrow]This evaluation strategy is the basis of the lambda calculus and is known as $\beta$-reduction
+\end{itemize}
+
+\item<3-> $\beta$-reduction: $\lambda$(x.e)x0 \arrow{} e\{x0/x\}
+\begin{alltt}
+\(\lambda\)(x.+(x, *(2, x)) -(5, -10)
+\arrow{} +(-(5, -10) *(2, -(5, -10)))
+\arrow{} +(15, *(2, -(5, -10)))
+\arrow{} +(15, *(2, 15))
+\arrow{} +(15, 30)
+\arrow{} 45
+\end{alltt}
 
 \end{itemize}
 \end{scriptsize}
 \end{frame}
 
+\begin{frame}[fragile]
+\frametitle{Parameter Passing Variations}
+%\framesubtitle{Lazy Evaluation: Call by Need}
+\begin{scriptsize}
+\begin{itemize}
+\item<1-> All the freezing and thawing can lead to considerable overhead
 
+\item<1-> Reducing the number of thunks created is important for efficiency
 
+\item<2-> Difficult to determine the order of evaluation which is essential for programs with side-effects
+
+\item<3-> You do not have to think operationally: you can reason equationally about your programs.-–S. Doaitse Swierstra
+\item<3-> I prefer call by value to call by name because it is more predictable.-–Mitchell Wand
+
+\item<4-> Popular with pure functional languages (i.e. with no side-effects) and rarely found elsewhere
+    
+\item<4-> Haskell and Clean	
+		
+\item<4-> C\# (deferred execution)
+
+\end{itemize}
+\end{scriptsize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Parameter Passing Variations}
+%\framesubtitle{Lazy Evaluation: Call by Need}
+\begin{scriptsize}
+\begin{itemize}
+\item<1-> HOMEWORK: 4.31, 4.32, 4.39, 4.40, 4.42
+
+\end{itemize}
+\end{scriptsize}
+\end{frame}
 
 \end{document} 
