@@ -920,9 +920,9 @@ $\frac{\rho_r = \texttt{[}n1=\texttt{(procedure p1 b1 }\rho_r)\texttt{]}\ldots \
 (const-exp (num) (num-val num))
 \end{alltt}
 
-\item<3-> (value-of (true-exp n) $\rho$) = (bool-val \#t)
+\item<3-> (value-of (true-exp) $\rho$) = (bool-val \#t)
 
-\item<3-> (value-of (false-exp n) $\rho$) = (bool-val \#f)
+\item<3-> (value-of (false-exp) $\rho$) = (bool-val \#f)
 
 \item<4->
 \begin{alltt}
@@ -1086,11 +1086,11 @@ $\frac{\rho_r = \texttt{[}n1=\texttt{(procedure p1 b1 }\rho_r)\texttt{]}\ldots \
 
 \item<3->
 \begin{alltt}
-         (new-env (new-env (foldl (lambda (name proc env)
-                                    (extend-env name proc env))
-                           env
-                           names
-                           temp-proc-vals)))]
+         (new-env (foldl (lambda (name proc env)
+                           (extend-env name proc env))
+                         env
+                         names
+                         temp-proc-vals))]
 \end{alltt}
 
 \item<4->
@@ -1117,7 +1117,7 @@ $\frac{\rho_r = \texttt{[}n1=\texttt{(procedure p1 b1 }\rho_r)\texttt{]}\ldots \
 \begin{scriptsize}
 \begin{itemize}
 \item<1-> Problems: 3.6--3.10, 3.12, 3.16--3.17, 3.21, 3.23--3.24, 3.26, 3.32--3.33, 3.55 (using the interpreter developed in class)
-    
+
 \item<1-> Some problems we have already solved!
 
 
@@ -1359,6 +1359,129 @@ An environment is a (listof rib)
 
 \begin{frame}[fragile]
 \frametitle{Variable Names Elimination}
+%\framesubtitle{HOMEWORK}
+\begin{scriptsize}
+\begin{itemize}
+\item<1-> We must now \texttt{design translate-program-nameless}
+
+\item<1-> The design idea:
+\begin{itemize}
+\item Convert \texttt{var-exp}s to \texttt{nameless-var-exp}s
+
+\item Convert \texttt{proc-exp}s to \texttt{nameless-proc-exp}s
+
+\item Convert \texttt{let-exp}s to \texttt{nameless-let-exp}s
+
+\item Convert \texttt{letrec-exp}s to \texttt{nameless-letrec-exp}s
+
+\item Perform the above transformations for all expressions in a program's parse tree
+\end{itemize}
+
+\end{itemize}
+\end{scriptsize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Variable Names Elimination}
+%\framesubtitle{HOMEWORK}
+\begin{tiny}
+\begin{itemize}
+\item<1->
+\begin{alltt}
+;; expression senv \arrow{} expression
+;; Purpose: Change var references to lexical-addresses
+(define (translate-exp-nameless exp senv)
+  (cases expression exp
+\end{alltt}
+
+\item<2-> 
+\begin{alltt}
+    (var-exp (var)
+             (let [(lex-addr (apply-senv senv var))]
+               (nameless-var-exp (first lex-addr) (second lex-addr))))
+\end{alltt}
+
+\item<3->
+\begin{alltt}
+    (diff-exp (exp1 exp2)
+              (diff-exp (translate-exp-nameless exp1 senv)
+                        (translate-exp-nameless exp2 senv)))
+\end{alltt}
+
+\item<4->
+\begin{alltt}
+    (zero?-exp (exp1)
+               (zero?-exp (translate-exp-nameless exp1 senv)))
+\end{alltt}
+
+\item<5->
+\begin{alltt}
+    (if-exp (exp1 exp2 exp3)
+            (if-exp
+             (translate-exp-nameless exp1 senv)
+             (translate-exp-nameless exp2 senv)
+             (translate-exp-nameless exp3 senv)))
+
+\end{alltt}
+
+\item<6->
+\begin{alltt}
+    (let-exp (vars exps body)
+             (nameless-let-exp
+              (map (lambda (e) (translate-exp-nameless e senv))
+                   exps)
+              (translate-exp-nameless body (extend-senv vars senv))))
+
+\end{alltt}
+
+\item<7->
+\begin{alltt}
+    (proc-exp (params body)
+              (nameless-proc-exp 
+               (translate-exp-nameless body (extend-senv params senv))))
+               
+\end{alltt}
+
+\end{itemize}
+\end{tiny}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Variable Names Elimination}
+%\framesubtitle{HOMEWORK}
+\begin{tiny}
+\begin{itemize}
+\item<1->
+\begin{alltt}
+    (call-exp (rator rands)
+              (call-exp
+               (translate-exp-nameless rator senv)
+               (map (lambda (e) (translate-exp-nameless e senv))
+                    rands)))
+\end{alltt}
+
+\item<2->
+\begin{alltt}
+    (letrec-exp (names params bodies body)
+                (nameless-letrec-exp
+                 (map (lambda (e ps)
+                        (translate-exp-nameless
+                         e
+                         (extend-senv ps (extend-senv names senv))))
+                      bodies
+                      params)
+                 (translate-exp-nameless body (extend-senv names senv))))
+    (else exp)))
+\end{alltt}
+
+\end{itemize}
+\end{tiny}
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+%\frametitle{Variable Names Elimination}
 \framesubtitle{HOMEWORK}
 \begin{scriptsize}
 \begin{itemize}
