@@ -2122,7 +2122,7 @@ in begin
 \framesubtitle{Lazy Evaluation: Call by Name}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> 
+\item<1->
 \begin{alltt}
 letrec compute-ints-from-n (n) = (compute-ints-from-n +(n, 1))
 in let f = proc (k) 42
@@ -2259,7 +2259,7 @@ in let f = proc (k) 42
 \framesubtitle{Lazy Evaluation: Call by Name}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> 
+\item<1->
 \begin{alltt}
 ;; value-of-rand : expression environment -> Ref
 ;; Purpose: if the expression is a var-exp, then return the reference.
@@ -2375,38 +2375,16 @@ in (proc (x) +(x, x) (g 0))
 \framesubtitle{Lazy Evaluation: Call by Need}
 \begin{scriptsize}
 \begin{itemize}
-\item<1-> Change how var-exp are evaluated
-\begin{alltt}
-(var-exp (var)
-  (let ((ref1 (apply-env env var)))
-    (let ((w (deref ref1)))
-      (if (expval? w)
-          w	
-          (let ((v1 (value-of-thunk w)))
-            (begin
-              (setref! ref1 v1)
-              v1))))))
-\end{alltt}
-
-\end{itemize}
-\end{scriptsize}
-\end{frame}
-
-\begin{frame}[fragile]
-\frametitle{Parameter Passing Variations}
-\framesubtitle{Lazy Evaluation: Call by Need}
-\begin{scriptsize}
-\begin{itemize}
-\item<1-> 
+\item<1->
 \begin{alltt}
 let g = let counter = 10
         in proc (d) *(2, counter)
 in (proc (x) +(x, x) (g 0))
 \end{alltt}
 
-\item<2> x is the thunk for (g 0)
+\item<2-> x is the thunk for (g 0)
 
-\item<3-> the first x forces the evaluation of the thunk to 20 
+\item<3-> the first x forces the evaluation of the thunk to 20
 
 \item<3-> mutates x to 20
 
@@ -2433,7 +2411,7 @@ in (proc (x) +(x, x) (g 0))
 let g = let count = 0
         in proc (d)
 	         begin
-               set count = incr(count);
+               set count = -(count, -1);
                count
 	       end
 in (proc (x) +(x, x) (g 0) )
@@ -2454,7 +2432,7 @@ in (proc (x) +(x, x) (g 0) )
 \item<9-> call-by-need
 
 \item<10-> the first reference to x forces: sets count to 1, returns 1 as the value of (g 0), and stores 1 as the value of (g 0)
-\item<11-> second reference to x: returns the stored 1 
+\item<11-> second reference to x: returns the stored 1
 
 \item<12>  +(1, 1) = 2
 
@@ -2505,7 +2483,7 @@ in (proc (x) +(x, x) (g 0) )
 \item<3-> I prefer call by value to call by name because it is more predictable.-–Mitchell Wand
 
 \item<4-> Popular with pure functional languages (i.e. with no side-effects) and rarely found elsewhere
-    
+
 \item<4-> Haskell and Clean	
 		
 \item<4-> C\# (deferred execution)
